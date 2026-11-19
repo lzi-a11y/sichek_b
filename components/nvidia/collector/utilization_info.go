@@ -43,6 +43,12 @@ func (util *UtilizationInfo) ToString() string {
 func (util *UtilizationInfo) Get(device nvml.Device, uuid string) error {
 	// Each sample period may be between 1 second and 1/6 second, depending on the product being queried.
 	utilization, err := device.GetUtilizationRates()
+	// MIG-enabled GPUs (e.g. A100 with MIG mode on) report utilization only per
+	// MIG instance; the parent device returns NOT_SUPPORTED. That is a missing
+	// metric, not an inaccessible GPU, so it must not mark the GPU as lost.
+	if errors.Is(err, nvml.ERROR_NOT_SUPPORTED) {
+		return nil
+	}
 	if !errors.Is(err, nvml.SUCCESS) {
 		return fmt.Errorf("failed to get utilization rates for GPU %v : %v", uuid, nvml.ErrorString(err))
 	}
